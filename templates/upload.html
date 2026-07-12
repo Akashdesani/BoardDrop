@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BoardDrop | Send File</title>
+    <style>
+        :root {
+            --bg-color: #121212;
+            --container-bg: #1e1e1e;
+            --primary: #3b82f6;
+            --primary-hover: #2563eb;
+            --success: #22c55e;
+            --text-main: #ffffff;
+            --text-muted: #a1a1aa;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .container {
+            background-color: var(--container-bg);
+            padding: 30px;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            width: 90%;
+            max-width: 420px;
+            text-align: center;
+        }
+        h2 { margin-top: 0; margin-bottom: 25px; font-weight: 600; }
+        
+        /* PIN Input Styles */
+        .pin-input {
+            width: 100%;
+            padding: 14px;
+            border-radius: 8px;
+            border: 1px solid #3f3f46;
+            background-color: #27272a;
+            color: white;
+            font-size: 18px;
+            text-align: center;
+            margin-bottom: 15px;
+            box-sizing: border-box;
+            outline: none;
+        }
+        .pin-input:focus { border-color: var(--primary); }
+
+        /* Drag & Drop Zone */
+        .drop-zone {
+            border: 2px dashed var(--primary);
+            padding: 40px 20px;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-bottom: 20px;
+            background-color: rgba(59, 130, 246, 0.05);
+            display: block;
+        }
+        .drop-zone:hover, .drop-zone.dragover {
+            background-color: rgba(59, 130, 246, 0.15);
+            border-color: var(--text-main);
+            transform: scale(1.02);
+        }
+        .drop-zone p { margin: 10px 0 0 0; color: var(--text-muted); font-size: 14px; }
+        .drop-zone svg { fill: var(--primary); width: 48px; height: 48px; transition: transform 0.3s ease; }
+        .drop-zone:hover svg { transform: translateY(-5px); }
+        
+        input[type="file"] { display: none; }
+
+        /* Mobile Action Buttons */
+        .action-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-bottom: 25px;
+        }
+        .action-btn {
+            background-color: #27272a;
+            color: var(--text-main);
+            border: 1px solid #3f3f46;
+            padding: 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: 0.2s;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        .action-btn:hover { background-color: #3f3f46; }
+
+        /* Upload Button */
+        .upload-btn {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 14px 20px;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            width: 100%;
+            font-weight: bold;
+            transition: 0.3s;
+        }
+        .upload-btn:hover:not(:disabled) { background-color: var(--primary-hover); box-shadow: 0 4px 12px rgba(59,130,246,0.4); }
+        .upload-btn:disabled { background-color: #3f3f46; color: #71717a; cursor: not-allowed; }
+
+        /* Progress Bar & Success Animation */
+        .progress-wrapper { margin-top: 25px; display: none; }
+        .progress-bar-bg { background-color: #27272a; border-radius: 10px; height: 12px; width: 100%; overflow: hidden; }
+        .progress-bar-fill { height: 100%; background-color: var(--primary); width: 0%; transition: width 0.3s ease, background-color 0.3s ease; }
+        #status-text { margin-top: 10px; font-size: 14px; color: var(--text-muted); font-weight: 500; }
+
+        @keyframes popIn {
+            0% { transform: scale(0.8); opacity: 0; }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .success-anim { animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; color: var(--success) !important; }
+    </style>
+</head>
+<body>
+
+<div id="security-screen" class="container">
+    <h2>🔒 Room Locked</h2>
+    <p style="color: var(--text-muted); margin-bottom: 20px; font-size: 14px;">Enter the Room ID displayed on your desktop app.</p>
+    <input type="text" id="roomPin" placeholder="Enter Room ID" class="pin-input" autocomplete="off">
+    <button class="upload-btn" onclick="unlockRoom()">Unlock</button>
+    <div id="pin-error" style="color: #ef4444; margin-top: 15px; font-size: 14px; display: none;">Invalid Room ID</div>
+</div>
+
+<div id="main-upload-screen" class="container" style="display: none;">
+    <h2>📡 BoardDrop</h2>
+    
+    <label class="drop-zone" id="dropZone" for="generalInput">
+        <svg viewBox="0 0 24 24"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.36 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z"/></svg>
+        <p id="fileName">Drag & Drop or Tap to Browse</p>
+    </label>
+
+    <input type="file" id="generalInput">
+    <input type="file" id="cameraInput" accept="image/*" capture="environment">
+    <input type="file" id="galleryInput" accept="image/*,video/*">
+
+    <div class="action-grid">
+        <button class="action-btn" onclick="document.getElementById('cameraInput').click()">📸 Camera</button>
+        <button class="action-btn" onclick="document.getElementById('galleryInput').click()">🖼️ Gallery</button>
+    </div>
+
+    <button id="uploadBtn" class="upload-btn" onclick="uploadFile()" disabled>Send File</button>
+
+    <div class="progress-wrapper" id="progressWrapper">
+        <div class="progress-bar-bg">
+            <div class="progress-bar-fill" id="progressBar"></div>
+        </div>
+        <div id="status-text">0% Uploaded</div>
+    </div>
+</div>
+
+<script>
+    let activeRoomId = "";
+
+    // Security Logic
+    window.onload = function() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const urlRoom = urlParams.get('room');
+        if (urlRoom) {
+            document.getElementById('roomPin').value = urlRoom;
+            unlockRoom();
+        }
+    };
+
+    function unlockRoom() {
+        const pin = document.getElementById('roomPin').value;
+        const errorDiv = document.getElementById('pin-error');
+        errorDiv.style.display = 'none';
+
+        fetch('/verify_room', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ room_id: pin })
+        })
+        .then(response => {
+            if (response.ok) {
+                activeRoomId = pin;
+                document.getElementById('security-screen').style.display = 'none';
+                document.getElementById('main-upload-screen').style.display = 'block';
+            } else {
+                errorDiv.style.display = 'block';
+            }
+        })
+        .catch(err => {
+            errorDiv.textContent = "Network error. Server might be down.";
+            errorDiv.style.display = 'block';
+        });
+    }
+
+    // Upload Logic
+    const dropZone = document.getElementById('dropZone');
+    const fileNameDisplay = document.getElementById('fileName');
+    const uploadBtn = document.getElementById('uploadBtn');
+    const progressWrapper = document.getElementById('progressWrapper');
+    const progressBar = document.getElementById('progressBar');
+    const statusText = document.getElementById('status-text');
+
+    let selectedFile = null;
+
+    function handleFile(file) {
+        if (!file) return;
+        selectedFile = file;
+        fileNameDisplay.textContent = file.name;
+        fileNameDisplay.style.color = '#fff';
+        uploadBtn.disabled = false;
+        
+        progressWrapper.style.display = 'none';
+        progressBar.style.width = '0%';
+        progressBar.style.backgroundColor = 'var(--primary)';
+        statusText.classList.remove('success-anim');
+    }
+
+    document.getElementById('generalInput').addEventListener('change', (e) => handleFile(e.target.files[0]));
+    document.getElementById('cameraInput').addEventListener('change', (e) => handleFile(e.target.files[0]));
+    document.getElementById('galleryInput').addEventListener('change', (e) => handleFile(e.target.files[0]));
+
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+        dropZone.addEventListener(eventName, e => { e.preventDefault(); e.stopPropagation(); }, false);
+    });
+
+    ['dragenter', 'dragover'].forEach(eventName => {
+        dropZone.addEventListener(eventName, () => dropZone.classList.add('dragover'), false);
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+        dropZone.addEventListener(eventName, () => dropZone.classList.remove('dragover'), false);
+    });
+
+    dropZone.addEventListener('drop', (e) => handleFile(e.dataTransfer.files[0]));
+
+    function uploadFile() {
+        if (!selectedFile) return;
+
+        uploadBtn.disabled = true;
+        progressWrapper.style.display = 'block';
+        statusText.textContent = 'Uploading...';
+
+        const formData = new FormData();
+        formData.append("file", selectedFile);
+        formData.append("room_id", activeRoomId); // Inject verified Room ID
+
+        const xhr = new XMLHttpRequest();
+        xhr.open("POST", "/upload_file", true);
+
+        xhr.upload.onprogress = function(event) {
+            if (event.lengthComputable) {
+                const percent = Math.round((event.loaded / event.total) * 100);
+                progressBar.style.width = percent + '%';
+                statusText.textContent = percent + '% Uploaded';
+            }
+        };
+
+        xhr.onload = function() {
+            if (xhr.status === 200) {
+                progressBar.style.backgroundColor = 'var(--success)';
+                statusText.textContent = "✅ Upload Successful!";
+                statusText.classList.add('success-anim');
+                
+                selectedFile = null;
+                document.getElementById('generalInput').value = "";
+                
+                setTimeout(() => {
+                    fileNameDisplay.textContent = "Drag & Drop or Tap to Browse";
+                    fileNameDisplay.style.color = "var(--text-muted)";
+                    progressWrapper.style.display = 'none';
+                    statusText.classList.remove('success-anim');
+                }, 3500);
+            } else {
+                statusText.textContent = "❌ Error: Invalid Room or Server Reject";
+                progressBar.style.backgroundColor = 'red';
+                uploadBtn.disabled = false;
+            }
+        };
+
+        xhr.onerror = function() {
+            statusText.textContent = "❌ Network Error";
+            progressBar.style.backgroundColor = 'red';
+            uploadBtn.disabled = false;
+        };
+
+        xhr.send(formData);
+    }
+</script>
+
+</body>
+</html>

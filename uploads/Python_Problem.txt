@@ -1,0 +1,64 @@
+#Write a Program to input 2 numbers & print their sum.
+#Write a Python Program To Input side of a square & print its area.
+#Write a Python Program To Input 2 floating point numbers & print their average.
+"""Write a Python Program To Input 2 int numbers, a and b.
+Print True if a is greter than or equal to b. if not print False"""
+# Write A Python Program To find remainder when a number is divided by Z
+#Check the type of variable assigned using input() function
+# Write a python program to check if a number entered by the user is odd or even.
+
+# Write a python program to fide the greatest of 3 numbers entered by the user.
+#Write to check if a number is a multiple of 7 or not.
+Pyhton Program To ask the user to enter names of their 3 Favorite Movies & Store Them in a list.
+#WAP to count the number of student with the "A" grade in the followig tuple.   
+#Store the above value on a list & sort them from "A" To "D".
+"""Store Following word meanings in a python dictionary
+        table : "a piece of furniture",list of facts & figures
+        cat : "a small animal"
+"""
+"""you are given a list of subject for student. assume one classroom is required for 1
+subject. how many classroom are needed by all students."""
+"""wap to enter marks of 3 subject from the user and store them in dictionary.
+Start with an empthy dictionary & add one by one. use subject name as key & marks as value"""
+#Print the elements of the following list using a loop.
+#Print the elements of the following list using a loopppp:
+#Write A Python Program To Print Even Number Using For Loop
+#Write A Program to fide sum of first n numbers.
+#Print the multiplication table of a number n.
+#Write A Python Program To Print Odd Number Using For Loop
+#Print numbers from 1 to 100
+#Print numbers from 100 to 1
+#Print the multiplication table of a number n
+#Write A Python Program to fide the factorial of first n numbers.
+#Search for a number x in this tuple using loop:
+#Write A Program to print the length of a list.(list is the parameter)
+# Write to fide the factirial of n. (n is the parameter)    
+#Write A Python Program To Enter Usd Value And Convert Into INR
+#Write Program To Print 1 To 100. (Parameter Is n)
+#Write A Python Program To Print Odd And Even Number. (Paramter Is n)
+
+def show(n):
+    if(n == 0):
+        return
+    
+    print(n)
+    show(n-1)
+
+show(5)
+
+
+#WPA To enter Any Number than check These Number Positive / Nagative / Zero
+#String Input લો અને તેની Length Print કરો.
+#User પાસેથી String લો અને તેને Reverse કરીને Print કરો.
+#Write A Python Program To Enter User Guss The Any Number And Check The Number. If A Number Right
+#Than Print You Won ! Other Wise Guss Another Number
+
+"""Write A python Program To Catch Up Usarname And Password If Username And Password Correct Than 
+Print Login Succesfully And Not Coorect To Than Print Try Again"""
+
+"""Write A Python Program To Input From The User. A user have enter 1 than print monday 
+to using condition statement"""
+
+# Write A python Program To Pring Tringl
+#Write A Python Program To Print Opposite Tringle
+
