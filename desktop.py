@@ -1,68 +1,42 @@
-import requests
-import os
-import socket
 import os
 import sys
 import time
-import socketio
+import socket
 import threading
 import sqlite3
 import winreg
+import requests
+from PIL import Image
 import pystray
 from pystray import MenuItem as item
-from utils.room import generate_room_id
-from utils.qr_generator import generate_qr
-from PIL import Image
+from pystray import Menu
+import socketio
 import customtkinter as ctk
 
-# Import the Flask app explicitly to run it from here
-from app import app as flask_app, socketio as flask_sio
-
-room_id = generate_room_id()
-
-def get_local_ip():
-    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    try:
-        s.connect(("8.8.8.8", 80))
-        ip = s.getsockname()[0]
-    except:
-        ip = "127.0.0.1"
-    finally:
-        s.close()
-
-    return ip
-
+# Custom modules
+from utils.room import generate_room_id
+from utils.qr_generator import generate_qr
 
 # Import the Flask app explicitly to run it from here
 from app import app as flask_app, socketio as flask_sio
 
+# ---------------- Initialization & Config ----------------
+# Ensure required directories exist to avoid FileNotFoundError
+os.makedirs("qr", exist_ok=True)
+os.makedirs("downloads", exist_ok=True)
+os.makedirs("database", exist_ok=True)
+
 room_id = generate_room_id()
-
-def get_local_ip():
-    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    try:
-        s.connect(("8.8.8.8", 80))
-        ip = s.getsockname()[0]
-    except:
-        ip = "127.0.0.1"
-    finally:
-        s.close()
-
-    return ip
-
-ip = get_local_ip()
-
 server_url = f"https://boarddrop-1.onrender.com/upload?room={room_id}"
 
+# Generate QR
 generate_qr(server_url)
 
-
+# GUI Setup
 ctk.set_appearance_mode("dark")
 ctk.set_default_color_theme("blue")
 
 sio = socketio.Client()
-
-
 upload_count = 0
 DATABASE = os.path.join("database", "boarddrop.db")
 
@@ -70,10 +44,6 @@ app = ctk.CTk()
 app.title("BoardDrop")
 app.geometry("1200x700")
 app.minsize(1000, 650)
-
-# ---------------- OS Integration (Auto-Start & Tray) ----------------
-AUTOSTART_REG_PATH = r"Software\Microsoft\Windows\CurrentVersion\Run"
-APP_NAME = "BoardDrop"
 
 # ---------------- OS Integration (Auto-Start & Tray) ----------------
 AUTOSTART_REG_PATH = r"Software\Microsoft\Windows\CurrentVersion\Run"
@@ -122,7 +92,8 @@ def hide_window():
     except:
         image = Image.new('RGB', (64, 64), color=(59, 130, 246))
 
-    menu = (item('Show Dashboard', show_app), item('Quit BoardDrop', quit_app))
+    # Using proper pystray.Menu
+    menu = Menu(item('Show Dashboard', show_app), item('Quit BoardDrop', quit_app))
     icon = pystray.Icon("BoardDrop", image, "BoardDrop (Listening for files...)", menu)
     threading.Thread(target=icon.run, daemon=True).start()
 
@@ -187,6 +158,14 @@ recent.pack(fill="x", padx=30, pady=20)
 recent.insert("end", "Recent Files\n\n")
 recent.configure(state="disabled")
 
+footer = ctk.CTkLabel(
+    dashboard_frame,
+    text="Developed By Akash Desani",
+    font=("Segoe UI", 11),
+    text_color="#808080"
+)
+footer.pack(side="bottom", pady=8)
+
 # --- PAGE 2: History ---
 history_frame = ctk.CTkFrame(content_container, fg_color="transparent")
 frames["history"] = history_frame
@@ -200,6 +179,11 @@ def load_history():
         widget.destroy()
         
     try:
+        # Check if database exists
+        if not os.path.exists(DATABASE):
+            ctk.CTkLabel(history_scroll, text="No files uploaded yet.", font=("Arial", 16)).pack(pady=20)
+            return
+
         with sqlite3.connect(DATABASE) as conn:
             cursor = conn.cursor()
             cursor.execute("SELECT filename, upload_time FROM upload_history ORDER BY id DESC")
@@ -215,7 +199,8 @@ def load_history():
                 ctk.CTkLabel(row, text=f"📄 {record[0]}", font=("Arial", 16)).pack(side="left", padx=15, pady=10)
                 ctk.CTkLabel(row, text=record[1], font=("Arial", 12), text_color="gray").pack(side="right", padx=15, pady=10)
     except Exception as e:
-        ctk.CTkLabel(history_scroll, text="Database not found or empty.", font=("Arial", 16)).pack(pady=20)
+        ctk.CTkLabel(history_scroll, text="Failed to load history.", font=("Arial", 16)).pack(pady=20)
+        print(f"Database error: {e}")
 
 # --- PAGE 3: Settings ---
 settings_frame = ctk.CTkFrame(content_container, fg_color="transparent")
@@ -271,25 +256,21 @@ def handle_new_file(data):
     global upload_count
 
     upload_count += 1
-    filename = data["filename"]
+    # Secure filename extraction
+    filename = os.path.basename(data["filename"])
 
     try:
         url = f"https://boarddrop-1.onrender.com/uploads/{filename}"
-
-        os.makedirs("downloads", exist_ok=True)
-
         save_path = os.path.join("downloads", filename)
 
         r = requests.get(url, timeout=30)
 
         if r.status_code == 200:
-
             with open(save_path, "wb") as f:
                 f.write(r.content)
 
             if os.name == "nt":
                 os.startfile(os.path.abspath(save_path))
-
         else:
             print("Download Failed :", r.status_code)
 
@@ -297,15 +278,8 @@ def handle_new_file(data):
         print("Download Error :", e)
 
     def update_ui():
-        today_label.configure(
-            text=f"Today's Uploads : {upload_count}"
-        )
-
-        waiting_label.configure(
-            text=f"Last upload : {filename}",
-            text_color="lightgreen"
-        )
-
+        today_label.configure(text=f"Today's Uploads : {upload_count}")
+        waiting_label.configure(text=f"Last upload : {filename}", text_color="lightgreen")
         recent.configure(state="normal")
         recent.insert("end", f"📄 {filename}\n")
         recent.see("end")
@@ -316,7 +290,6 @@ def handle_new_file(data):
 # ---------------- Threading Setup ----------------
 def run_flask_server():
     """Runs the backend server silently in the background"""
-    # use_reloader=False is REQUIRED when compiled into an EXE to prevent double-spawning
     flask_sio.run(flask_app, host="0.0.0.0", port=5000, use_reloader=False, debug=False)
 
 def connect_to_server():
@@ -325,10 +298,7 @@ def connect_to_server():
             sio.connect("https://boarddrop-1.onrender.com")
             sio.wait()
         except Exception:
-            app.after(0, lambda: status.configure(
-                text="🔴 Offline",
-                text_color="red"
-            ))
+            app.after(0, lambda: status.configure(text="🔴 Offline", text_color="red"))
             time.sleep(2)
 
 if __name__ == "__main__":
@@ -339,12 +309,4 @@ if __name__ == "__main__":
     threading.Thread(target=connect_to_server, daemon=True).start()
     
     # 3. Launch the Desktop UI
-    footer = ctk.CTkLabel(
-    dashboard_frame,
-    text="Developed By Akash Desani",
-    font=("Segoe UI", 11),
-    text_color="#808080"
-)
-
-    footer.pack(side="bottom", pady=8)
     app.mainloop()
