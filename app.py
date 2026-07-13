@@ -1,4 +1,5 @@
 from flask import Flask, render_template, request, jsonify
+from flask import send_from_directory
 from flask_socketio import SocketIO
 from werkzeug.utils import secure_filename
 from plyer import notification
@@ -95,6 +96,7 @@ def verify_room():
 @app.route("/upload_file", methods=["POST"])
 def upload_file():
     provided_room_id = request.form.get("room_id")
+
     if active_room_id and provided_room_id != active_room_id:
         return "Invalid Room ID. Access Denied.", 403
 
@@ -102,6 +104,7 @@ def upload_file():
         return "No File", 400
 
     file = request.files["file"]
+
     if file.filename == "":
         return "No File Selected", 400
 
@@ -110,18 +113,23 @@ def upload_file():
 
     filename = secure_filename(file.filename)
     path = os.path.join(UPLOAD_FOLDER, filename)
+
     file.save(path)
 
+    # Save upload history
     with sqlite3.connect(DATABASE) as conn:
         cursor = conn.cursor()
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        cursor.execute("INSERT INTO upload_history (filename, filepath, upload_time) VALUES (?, ?, ?)",
-                       (filename, path, timestamp))
+        cursor.execute(
+            "INSERT INTO upload_history (filename, filepath, upload_time) VALUES (?, ?, ?)",
+            (filename, path, timestamp)
+        )
         conn.commit()
 
+    # Notify Desktop App
     socketio.emit("new_file", {"filename": filename})
 
-    # Desktop-only features (Windows only)
+    # Windows Desktop Only
     if os.name == "nt":
         try:
             notification.notify(
@@ -136,6 +144,10 @@ def upload_file():
             print(f"Desktop feature error: {e}")
 
     return "Upload Successful", 200
+
+@app.route("/uploads/<filename>")
+def get_uploaded_file(filename):
+    return send_from_directory(UPLOAD_FOLDER, filename)
 
 # ---------------- Socket.IO Events ----------------
 @socketio.on('connect')

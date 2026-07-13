@@ -1,3 +1,5 @@
+import requests
+import os
 import socket
 import os
 import sys
@@ -247,13 +249,36 @@ def update_device_count(data):
 @sio.on("new_file")
 def handle_new_file(data):
     global upload_count
+
     upload_count += 1
+
     filename = data["filename"]
+
+    try:
+        url = f"https://boarddrop-1.onrender.com/uploads/{filename}"
+
+        save_path = os.path.join("downloads", filename)
+
+        os.makedirs("downloads", exist_ok=True)
+
+        r = requests.get(url)
+
+        with open(save_path, "wb") as f:
+            f.write(r.content)
+
+        os.startfile(save_path)
+
+    except Exception as e:
+        print(e)
 
     def update_ui():
         today_label.configure(text=f"Today's Uploads : {upload_count}")
-        waiting_label.configure(text=f"Last upload: {filename}", text_color="lightgreen")
-        
+
+        waiting_label.configure(
+            text=f"Last upload: {filename}",
+            text_color="lightgreen"
+        )
+
         recent.configure(state="normal")
         recent.insert("end", f"📄 {filename}\n")
         recent.see("end")
