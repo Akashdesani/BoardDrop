@@ -251,31 +251,38 @@ def handle_new_file(data):
     global upload_count
 
     upload_count += 1
-
     filename = data["filename"]
 
     try:
         url = f"https://boarddrop-1.onrender.com/uploads/{filename}"
 
-        save_path = os.path.join("downloads", filename)
-
         os.makedirs("downloads", exist_ok=True)
 
-        r = requests.get(url)
+        save_path = os.path.join("downloads", filename)
 
-        with open(save_path, "wb") as f:
-            f.write(r.content)
+        r = requests.get(url, timeout=30)
 
-        os.startfile(save_path)
+        if r.status_code == 200:
+
+            with open(save_path, "wb") as f:
+                f.write(r.content)
+
+            if os.name == "nt":
+                os.startfile(os.path.abspath(save_path))
+
+        else:
+            print("Download Failed :", r.status_code)
 
     except Exception as e:
-        print(e)
+        print("Download Error :", e)
 
     def update_ui():
-        today_label.configure(text=f"Today's Uploads : {upload_count}")
+        today_label.configure(
+            text=f"Today's Uploads : {upload_count}"
+        )
 
         waiting_label.configure(
-            text=f"Last upload: {filename}",
+            text=f"Last upload : {filename}",
             text_color="lightgreen"
         )
 
