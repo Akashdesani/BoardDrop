@@ -318,14 +318,5 @@ if __name__ == "__main__":
     # 2. Start the Socket Connection
     threading.Thread(target=connect_to_server, daemon=True).start()
     
-
-    footer = ctk.CTkLabel(
-    dashboard_frame,
-    text="© 2026 BoardDrop | Developed By Akash Desani",
-    font=("Segoe UI", 11, "italic"),
-    text_color="#7F8C8D"
-)
-
-    footer.pack(side="bottom", pady=(5, 8))
     # 3. Launch the Desktop UI
     app.mainloop()
