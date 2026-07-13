@@ -32,13 +32,29 @@ def get_local_ip():
 
     return ip
 
+
+# Import the Flask app explicitly to run it from here
+from app import app as flask_app, socketio as flask_sio
+
+room_id = generate_room_id()
+
+def get_local_ip():
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        s.connect(("8.8.8.8", 80))
+        ip = s.getsockname()[0]
+    except:
+        ip = "127.0.0.1"
+    finally:
+        s.close()
+
+    return ip
+
 ip = get_local_ip()
 
 server_url = f"https://boarddrop-1.onrender.com/upload?room={room_id}"
 
 generate_qr(server_url)
-
-room_id = generate_room_id()
 
 
 ctk.set_appearance_mode("dark")
@@ -54,6 +70,10 @@ app = ctk.CTk()
 app.title("BoardDrop")
 app.geometry("1200x700")
 app.minsize(1000, 650)
+
+# ---------------- OS Integration (Auto-Start & Tray) ----------------
+AUTOSTART_REG_PATH = r"Software\Microsoft\Windows\CurrentVersion\Run"
+APP_NAME = "BoardDrop"
 
 # ---------------- OS Integration (Auto-Start & Tray) ----------------
 AUTOSTART_REG_PATH = r"Software\Microsoft\Windows\CurrentVersion\Run"
