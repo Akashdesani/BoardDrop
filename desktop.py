@@ -32,7 +32,7 @@ def get_local_ip():
 
 ip = get_local_ip()
 
-server_url = f"http://{ip}:5000/upload?room={room_id}"
+server_url = f"https://boarddrop-1.onrender.com/upload?room={room_id}"
 
 generate_qr(server_url)
 
@@ -270,7 +270,7 @@ def run_flask_server():
 def connect_to_server():
     while True:
         try:
-            sio.connect("http://127.0.0.1:5000")
+            sio.connect("https://boarddrop-1.onrender.com")
             sio.wait()
         except Exception:
             app.after(0, lambda: status.configure(
