@@ -319,4 +319,12 @@ if __name__ == "__main__":
     threading.Thread(target=connect_to_server, daemon=True).start()
     
     # 3. Launch the Desktop UI
+    footer = ctk.CTkLabel(
+    dashboard_frame,
+    text="Developed By Akash Desani",
+    font=("Segoe UI", 11),
+    text_color="#808080"
+)
+
+    footer.pack(side="bottom", pady=8)
     app.mainloop()
