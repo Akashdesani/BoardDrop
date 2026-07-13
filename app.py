@@ -120,19 +120,20 @@ def upload_file():
         conn.commit()
 
     socketio.emit("new_file", {"filename": filename})
-        # Desktop-only features (Windows only)
-if os.name == "nt":
-    try:
-        notification.notify(
-            title="BoardDrop",
-            message=f"{filename} Received",
-            timeout=5
-        )
 
-        os.startfile(path)
+    # Desktop-only features (Windows only)
+    if os.name == "nt":
+        try:
+            notification.notify(
+                title="BoardDrop",
+                message=f"{filename} Received",
+                timeout=5
+            )
 
-    except Exception as e:
-        print(f"Desktop feature error: {e}")
+            os.startfile(path)
+
+        except Exception as e:
+            print(f"Desktop feature error: {e}")
 
     return "Upload Successful", 200
 
