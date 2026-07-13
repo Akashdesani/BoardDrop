@@ -147,3 +147,13 @@ def sync_room_id(data):
     global active_room_id
     active_room_id = data.get("room_id")
     print(f"Server secured with Room ID: {active_room_id}")
+
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 5000))
+
+    socketio.run(
+        app,
+        host="0.0.0.0",
+        port=port,
+        debug=False
+    )
