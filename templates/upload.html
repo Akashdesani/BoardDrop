@@ -23,6 +23,7 @@
             align-items: center;
             height: 100vh;
             margin: 0;
+            position: relative; /* Added for footer positioning */
         }
         .container {
             background-color: var(--container-bg);
@@ -124,6 +125,21 @@
             100% { transform: scale(1); opacity: 1; }
         }
         .success-anim { animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; color: var(--success) !important; }
+
+        /* Footer Styles */
+        .footer {
+            position: absolute;
+            bottom: 20px;
+            width: 100%;
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 13px;
+            letter-spacing: 0.5px;
+        }
+        .footer span {
+            color: var(--primary);
+            font-weight: 600;
+        }
     </style>
 </head>
 <body>
@@ -163,15 +179,27 @@
     </div>
 </div>
 
+<!-- Footer Added Here -->
+<div class="footer">
+    Developed and managed by <span>Akash Desani</span>
+</div>
+
 <script>
+    const params = new URLSearchParams(window.location.search);
+    const mode = params.get("mode") || "online";
+    const room = params.get("room");
     let activeRoomId = "";
 
     // Security Logic
-    window.onload = function() {
-        const urlParams = new URLSearchParams(window.location.search);
-        const urlRoom = urlParams.get('room');
-        if (urlRoom) {
-            document.getElementById('roomPin').value = urlRoom;
+    window.onload = function () {
+        if (mode === "offline") {
+            document.getElementById("security-screen").style.display = "none";
+            document.getElementById("main-upload-screen").style.display = "block";
+            return;
+        }
+
+        if (room) {
+            document.getElementById("roomPin").value = room;
             unlockRoom();
         }
     };
