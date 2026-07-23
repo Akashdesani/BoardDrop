@@ -9,6 +9,7 @@ import sqlite3
 from datetime import datetime
 import threading
 import time
+from flask import request, jsonify
 
 # ---------------- PyInstaller Path Routing ----------------
 # When compiled, PyInstaller unpacks files into a temp folder (_MEIPASS)
@@ -218,15 +219,14 @@ if __name__ == "__main__":
     )
 
 
-from flask import request, jsonify
-
 @app.route("/api/feedback", methods=["POST"])
 def receive_feedback():
     try:
         data = request.get_json()
 
-        print("Feedback Received")
+        print("========== New Feedback ==========")
         print(data)
+        print("==================================")
 
         return jsonify({
             "success": True,
