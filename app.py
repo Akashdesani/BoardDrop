@@ -216,8 +216,3 @@ if __name__ == "__main__":
         port=port,
         debug=False
     )
-
-        return jsonify({
-            "success": False,
-            "error": str(e)
-        }), 500
