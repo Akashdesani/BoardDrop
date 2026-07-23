@@ -18,27 +18,61 @@ if getattr(sys, 'frozen', False):
 else:
     app = Flask(__name__)
 
-socketio = SocketIO(app, cors_allowed_origins="*")
+socketio = SocketIO(
+    app,
+    cors_allowed_origins="*",
+    async_mode="threading"
+)
 
 # Configuration Constants
-UPLOAD_FOLDER = "uploads"
-DATABASE_DIR = "database"
-DATABASE = os.path.join(DATABASE_DIR, "boarddrop.db")
-MAX_FILE_SIZE = 100 * 1024 * 1024  # 100 MB Limit
-ALLOWED_EXTENSIONS = {'pdf', 'ppt', 'pptx', 'doc', 'docx', 'png', 'jpg', 'jpeg', 'gif', 'mp4', 'avi', 'zip', 'rar', 'txt'}
+from pathlib import Path
+import os
+
+APP_DATA = Path(os.getenv("LOCALAPPDATA")) / "BoardDrop"
+
+UPLOAD_FOLDER = APP_DATA / "uploads"
+DATABASE_DIR = APP_DATA / "database"
+
+UPLOAD_FOLDER.mkdir(parents=True, exist_ok=True)
+DATABASE_DIR.mkdir(parents=True, exist_ok=True)
+
+DATABASE = DATABASE_DIR / "boarddrop.db" 
+ALLOWED_EXTENSIONS = {
+    # Documents
+    "pdf", "doc", "docx", "txt", "rtf", "odt",
+
+    # Office
+    "ppt", "pptx", "xls", "xlsx", "csv",
+
+    # Images
+    "png", "jpg", "jpeg", "gif", "bmp", "webp", "tiff", "svg",
+
+    # Audio
+    "mp3", "wav", "aac", "flac", "ogg",
+
+    # Video
+    "mp4", "avi", "mkv", "mov", "wmv", "webm",
+
+    # Archives
+    "zip", "rar", "7z", "tar", "gz",
+
+    # Executables
+    "exe", "msi", "apk", "iso"
+}
 FILE_RETENTION_SECONDS = 24 * 3600  # 24 hours
 
-app.config['MAX_CONTENT_LENGTH'] = MAX_FILE_SIZE
+app.config["MAX_CONTENT_LENGTH"] = 1024 * 1024 * 1024   # 1 GB
 
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(DATABASE_DIR, exist_ok=True)
 
 connected_devices = 0
 active_room_id = None
+CURRENT_MODE = "online"
 
 # ---------------- Database Setup ----------------
 def init_db():
-    with sqlite3.connect(DATABASE) as conn:
+    with sqlite3.connect(DATABASE, timeout=30) as conn:
         cursor = conn.cursor()
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS upload_history (
@@ -63,7 +97,7 @@ def auto_delete_old_files():
                 if os.path.isfile(filepath):
                     if os.path.getmtime(filepath) < now - FILE_RETENTION_SECONDS:
                         os.remove(filepath)
-                        with sqlite3.connect(DATABASE) as conn:
+                        with sqlite3.connect(DATABASE, timeout=30) as conn:
                             cursor = conn.cursor()
                             cursor.execute("DELETE FROM upload_history WHERE filename = ?", (filename,))
                             conn.commit()
@@ -95,11 +129,13 @@ def verify_room():
 
 @app.route("/upload_file", methods=["POST"])
 def upload_file():
-    provided_room_id = request.form.get("room_id")
+    if CURRENT_MODE == "online":
+        provided_room_id = request.form.get("room_id")
 
-    if active_room_id and provided_room_id != active_room_id:
-        return "Invalid Room ID. Access Denied.", 403
+        if active_room_id and provided_room_id != active_room_id:
+            return "Invalid Room ID. Access Denied.", 403
 
+    
     if "file" not in request.files:
         return "No File", 400
 
@@ -117,7 +153,7 @@ def upload_file():
     file.save(path)
 
     # Save upload history
-    with sqlite3.connect(DATABASE) as conn:
+    with sqlite3.connect(DATABASE, timeout=30) as conn:
         cursor = conn.cursor()
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         cursor.execute(
@@ -127,21 +163,11 @@ def upload_file():
         conn.commit()
 
     # Notify Desktop App
-    socketio.emit("new_file", {"filename": filename})
-
-    # Windows Desktop Only
-    if os.name == "nt":
-        try:
-            notification.notify(
-                title="BoardDrop",
-                message=f"{filename} Received",
-                timeout=5
-            )
-
-            os.startfile(path)
-
-        except Exception as e:
-            print(f"Desktop feature error: {e}")
+    socketio.emit("new_file", {
+    "filename": filename,
+    "filepath": str(path),
+    "mode": CURRENT_MODE
+        })
 
     return "Upload Successful", 200
 
@@ -150,17 +176,30 @@ def get_uploaded_file(filename):
     return send_from_directory(UPLOAD_FOLDER, filename)
 
 # ---------------- Socket.IO Events ----------------
-@socketio.on('connect')
+@socketio.on("connect")
 def handle_connect():
     global connected_devices
-    connected_devices += 1
-    socketio.emit("device_count", {"count": connected_devices})
 
-@socketio.on('disconnect')
+    connected_devices += 1
+
+    print(f"[CONNECTED] Devices : {connected_devices}")
+
+    socketio.emit(
+    "device_count",
+    {"count": connected_devices}
+)
+@socketio.on("disconnect")
 def handle_disconnect():
     global connected_devices
+
     connected_devices = max(0, connected_devices - 1)
-    socketio.emit("device_count", {"count": connected_devices})
+
+    print(f"[DISCONNECTED] Devices : {connected_devices}")
+
+    socketio.emit(
+    "device_count",
+    {"count": connected_devices}
+)
 
 @socketio.on('sync_room_id')
 def sync_room_id(data):
@@ -177,3 +216,25 @@ if __name__ == "__main__":
         port=port,
         debug=False
     )
+
+
+from flask import request, jsonify
+
+@app.route("/api/feedback", methods=["POST"])
+def receive_feedback():
+    try:
+        data = request.get_json()
+
+        print("Feedback Received")
+        print(data)
+
+        return jsonify({
+            "success": True,
+            "message": "Feedback received successfully."
+        }), 200
+
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
