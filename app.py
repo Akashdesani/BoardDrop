@@ -3,12 +3,19 @@ from flask import send_from_directory
 from flask_socketio import SocketIO
 from werkzeug.utils import secure_filename
 from plyer import notification
+from pathlib import Path
+from datetime import datetime
 import os
 import sys
 import sqlite3
-from datetime import datetime
 import threading
 import time
+
+# --- PYINSTALLER FIX ---
+# This explicitly imports the threading driver so PyInstaller includes it in the build.
+# This prevents the "ValueError: Invalid async_mode specified" error.
+import engineio.async_drivers.threading 
+# -----------------------
 
 # ---------------- PyInstaller Path Routing ----------------
 # When compiled, PyInstaller unpacks files into a temp folder (_MEIPASS)
@@ -24,10 +31,7 @@ socketio = SocketIO(
     async_mode="threading"
 )
 
-# Configuration Constants
-from pathlib import Path
-import os
-
+# ---------------- Configuration Constants ----------------
 APP_DATA = Path(os.getenv("LOCALAPPDATA")) / "BoardDrop"
 
 UPLOAD_FOLDER = APP_DATA / "uploads"
@@ -40,31 +44,22 @@ DATABASE = DATABASE_DIR / "boarddrop.db"
 ALLOWED_EXTENSIONS = {
     # Documents
     "pdf", "doc", "docx", "txt", "rtf", "odt",
-
     # Office
     "ppt", "pptx", "xls", "xlsx", "csv",
-
     # Images
     "png", "jpg", "jpeg", "gif", "bmp", "webp", "tiff", "svg",
-
     # Audio
     "mp3", "wav", "aac", "flac", "ogg",
-
     # Video
     "mp4", "avi", "mkv", "mov", "wmv", "webm",
-
     # Archives
     "zip", "rar", "7z", "tar", "gz",
-
     # Executables
     "exe", "msi", "apk", "iso"
 }
 FILE_RETENTION_SECONDS = 24 * 3600  # 24 hours
 
 app.config["MAX_CONTENT_LENGTH"] = 1024 * 1024 * 1024   # 1 GB
-
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-os.makedirs(DATABASE_DIR, exist_ok=True)
 
 connected_devices = 0
 active_room_id = None
@@ -134,7 +129,6 @@ def upload_file():
 
         if active_room_id and provided_room_id != active_room_id:
             return "Invalid Room ID. Access Denied.", 403
-
     
     if "file" not in request.files:
         return "No File", 400
@@ -164,10 +158,10 @@ def upload_file():
 
     # Notify Desktop App
     socketio.emit("new_file", {
-    "filename": filename,
-    "filepath": str(path),
-    "mode": CURRENT_MODE
-        })
+        "filename": filename,
+        "filepath": str(path),
+        "mode": CURRENT_MODE
+    })
 
     return "Upload Successful", 200
 
@@ -179,27 +173,16 @@ def get_uploaded_file(filename):
 @socketio.on("connect")
 def handle_connect():
     global connected_devices
-
     connected_devices += 1
-
     print(f"[CONNECTED] Devices : {connected_devices}")
+    socketio.emit("device_count", {"count": connected_devices})
 
-    socketio.emit(
-    "device_count",
-    {"count": connected_devices}
-)
 @socketio.on("disconnect")
 def handle_disconnect():
     global connected_devices
-
     connected_devices = max(0, connected_devices - 1)
-
     print(f"[DISCONNECTED] Devices : {connected_devices}")
-
-    socketio.emit(
-    "device_count",
-    {"count": connected_devices}
-)
+    socketio.emit("device_count", {"count": connected_devices})
 
 @socketio.on('sync_room_id')
 def sync_room_id(data):
@@ -211,8 +194,9 @@ if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
 
     socketio.run(
-        app,
-        host="0.0.0.0",
-        port=port,
-        debug=False
-    )
+    app,
+    host="0.0.0.0",
+    port=port,
+    debug=False,
+    allow_unsafe_werkzeug=True
+)
