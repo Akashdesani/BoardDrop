@@ -31,8 +31,14 @@ socketio = SocketIO(
     async_mode="threading"
 )
 
+import platform
+
 # ---------------- Configuration Constants ----------------
-APP_DATA = Path(os.getenv("LOCALAPPDATA")) / "BoardDrop"
+if platform.system() == "Windows":
+    APP_DATA = Path(os.getenv("LOCALAPPDATA")) / "BoardDrop"
+else:
+    # Linux / Render
+    APP_DATA = Path("/tmp/BoardDrop")
 
 UPLOAD_FOLDER = APP_DATA / "uploads"
 DATABASE_DIR = APP_DATA / "database"
